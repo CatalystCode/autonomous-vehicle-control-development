@@ -1,0 +1,13 @@
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License. See LICENSE in the project root for license information.
+#
+# Declared variables for the helm chart
+# Override common variables with values.override.yaml
+
+storage:
+  accountbase64: accountname
+  keybase64: accountkey
+  sharename: sharename
+
+tensorboardport: 6006
+logdir: /azure/share/training-distrib

@@ -1,0 +1,118 @@
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License. See LICENSE in the project root for license information.
+
+{{- $port := .Values.clusterConfig.port -}}
+{{- $releaseName := .Release.Namespace -}}
+{{- $secretname := (print .Release.Name "-storage-secret") -}}
+{{- $Values := .Values -}}
+---
+# Create a kubernetes job for every worker and ps node
+{{- range $job, $jobConfig := .Values.clusterConfig.jobs }}
+{{ range $i, $e := until (int $jobConfig.num)}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ $job }}-t{{$i}}
+  namespace: {{ $releaseName }}
+spec:
+  template:
+    metadata:
+      labels:
+        job: {{ $job }}
+        task: t{{$i}}
+    spec:
+      restartPolicy: Never
+      nodeSelector:
+        jobrole: {{ $job }}
+      containers:
+      - name: {{ $releaseName }}-tensorflow-training
+        image: {{ (index $Values $jobConfig.image).repository }}/{{ (index $Values $jobConfig.image).name }}:{{ (index $Values $jobConfig.image).tag }}
+        imagePullPolicy: Always
+        command: 
+            - "/bin/bash"
+            - "-c"
+            - "
+              {{-  if eq $job "worker" -}}
+              chmod +x /src/prepare_cars_data.sh && \
+                /bin/bash /src/prepare_cars_data.sh /src/images/Car.zip /src/images/NoCar.zip /mnt/data/ && \
+              {{end -}}
+              ls /src/ && \
+              ls /src/python/ && \
+              python /src/python/train.py --ps_hosts=${PSHOSTS} --worker_hosts=${WORKERHOSTS} --job_name={{ $job }} --task_id={{ $i }} \
+                    --data_dir=/mnt/data/ --train_dir=${TRAINDIR} --max_steps=300 --batch_size=${BATCHSIZE}"
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: azurefile
+          mountPath: /azure/{{ $Values.storage.sharename }}/
+        - mountPath: /mnt/
+          name: ssd
+        {{ if eq $job "worker" }}
+        {{ if $jobConfig.isGPU }}
+        - mountPath: /usr/local/nvidia/bin
+          name: bin
+        - mountPath: /usr/lib/nvidia
+          name: lib
+        - mountPath: /usr/lib/x86_64-linux-gnu/libcuda.so.1 
+          name: libcuda
+        resources:
+          requests:
+            alpha.kubernetes.io/nvidia-gpu: 1
+          limits:
+            alpha.kubernetes.io/nvidia-gpu: 1
+        {{ end }}
+        {{ end }}
+        ports:
+        - containerPort: {{ $port }}
+          hostPort: {{ $port }}
+          name: tensorflow-port
+        env:
+        - name: BATCHSIZE
+          value: {{ $Values.clusterConfig.batchSize | default 32 | quote }}
+        - name: JOBNAME
+          value: {{ $job | quote }}
+        - name: TASKID
+          value: {{ $i | quote }}
+        - name: TRAINDIR
+          value: {{ $Values.traindir }}
+        - name: PSHOSTS
+          valueFrom:
+            configMapKeyRef:
+              name: cluster-map
+              key: pshosts
+        - name: WORKERHOSTS
+          valueFrom:
+            configMapKeyRef:
+              name: cluster-map
+              key: workerhosts
+      {{ if eq $job "worker" }}
+      {{ if $jobConfig.isGPU }}
+        - name: LD_LIBRARY_PATH 
+          value: /usr/lib/nvidia:/usr/lib/x86_64-linux-gnu
+      {{ end }}
+      {{ end }}
+      volumes:
+      - name: azurefile
+        azureFile:
+          secretName: {{ $secretname }}
+          shareName: {{ $Values.storage.sharename }}
+          readOnly: false
+      - name: ssd
+        hostPath:
+          path: /mnt/
+      {{ if eq $job "worker" }}
+      {{ if $jobConfig.isGPU }}
+      - hostPath:
+          path: /usr/lib/nvidia-384/bin
+        name: bin
+      - hostPath:
+          path: /usr/lib/nvidia-384
+        name: lib
+      - name: libcuda 
+        hostPath: 
+          path: /usr/lib/x86_64-linux-gnu/libcuda.so.1 
+      {{ end }}
+      {{ end }}
+---
+{{ end }}
+{{- end }}

@@ -1,0 +1,11 @@
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License. See LICENSE in the project root for license information.
+
+storage:
+  accountbase64: accountname
+  keybase64: accountkey
+  sharename: share
+
+traindir: /azure/share/training-distrib
+evaldir: /azure/share/eval
+logdir: /azure/share/training-distrib

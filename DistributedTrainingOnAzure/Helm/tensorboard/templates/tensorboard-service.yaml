@@ -1,0 +1,46 @@
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License. See LICENSE in the project root for license information.
+
+# Tensorboard service
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: tensorboard
+  name: tensorboard
+spec:
+  ports:
+  - port: 80
+    targetPort: {{ .Values.tensorboardport }}
+  selector:
+    app: tensorboard
+  type: LoadBalancer
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: tensorboard
+  name: tensorboard
+spec:
+  template:
+    metadata:
+      labels:
+        app: tensorboard
+    spec:
+      volumes:
+      - name: azurefile
+        azureFile:
+            secretName: {{ .Release.Name }}-storage-secret
+            shareName: {{ .Values.storage.sharename }}
+            readOnly: true      
+      containers:
+      - name: tensorboard
+        command: ["/bin/sh", "-c"]
+        args: ["tensorboard --logdir={{ .Values.logdir }}"]
+        image: tensorflow/tensorflow
+        ports:
+        - containerPort: {{ .Values.tensorboardport }}
+        volumeMounts:
+        - mountPath: /azure/{{ .Values.storage.sharename }}/
+          name: azurefile

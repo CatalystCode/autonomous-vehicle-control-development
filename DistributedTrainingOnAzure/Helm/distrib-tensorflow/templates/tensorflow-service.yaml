@@ -1,0 +1,48 @@
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License. See LICENSE in the project root for license information.
+
+{{- $port := .Values.clusterConfig.port -}}
+---
+# Create a kubernetes service for every worker and ps node
+{{- range $job, $jobConfig := .Values.clusterConfig.jobs }}
+{{ range $i, $e := until (int $jobConfig.num)}}
+kind: Service
+apiVersion: v1
+metadata:
+  name: {{ $job }}-{{$i}}
+spec:
+  type: ClusterIP
+  ports:
+  - port: {{ int $port }}
+    targetPort: {{ int $port }}
+    protocol: TCP
+  selector:
+    job: {{ $job }}
+    task: t{{$i}}
+---
+{{ end }}
+{{- end }}
+---
+# Create a cluster-map to hold list of names for worker and ps services
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-map
+data:
+  pshosts: "
+    {{- range $job, $jobConfig := .Values.clusterConfig.jobs -}}
+      {{-  range $i, $e := until (int $jobConfig.num) -}}
+        {{- if eq $job "ps" -}}
+          {{- $job }}-{{$i}}:{{ $port }}{{ if ne $i (sub (int $jobConfig.num) 1)  }},{{ end -}}
+        {{- end -}}
+      {{- end -}}
+    {{- end -}}"
+  workerhosts: "
+    {{- range $job, $jobConfig := .Values.clusterConfig.jobs -}}
+      {{-  range $i, $e := until (int $jobConfig.num) -}}
+        {{- if eq $job "worker" -}}
+          {{- $job }}-{{$i}}:{{ $port }}{{ if ne $i (sub (int $jobConfig.num) 1)  }},{{ end -}}
+        {{- end -}}
+      {{- end -}}
+    {{- end -}}"
+---

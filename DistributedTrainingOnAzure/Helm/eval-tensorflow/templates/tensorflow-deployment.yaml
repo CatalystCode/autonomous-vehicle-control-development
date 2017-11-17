@@ -1,0 +1,68 @@
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License. See LICENSE in the project root for license information.
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Release.Name }}-eval-tensorflow
+  namespace: {{ .Release.Namespace }}
+spec:
+  template:   
+    spec:
+      restartPolicy: Never
+      nodeSelector:
+        jobrole: worker
+      volumes:
+      - name: azurefile
+        azureFile:
+            secretName: {{ .Release.Name }}-storage-secret
+            shareName: {{ .Values.storage.sharename }}
+            readOnly: false
+      - name: ssd
+        hostPath:
+          path: /mnt/
+      - hostPath:
+          path: /usr/lib/nvidia-384/bin
+        name: bin
+      - hostPath:
+          path: /usr/lib/nvidia-384
+        name: lib
+      - name: libcuda 
+        hostPath: 
+          path: /usr/lib/x86_64-linux-gnu/libcuda.so.1
+      containers:
+      - name: {{ .Release.Name }}-eval-tensorflow 
+        command: 
+            - "/bin/bash"
+            - "-c"
+            - "chmod +x /src/prepare_cars_data.sh && \
+                /bin/bash /src/prepare_cars_data.sh /src/images/Car.zip /src/images/NoCar.zip /mnt/data/ && \
+                python /src/python/eval.py --eval_dir=${EVALDIR} --checkpoint_dir=${TRAINDIR} --data_dir=/mnt/data/"
+        securityContext:
+          privileged: true
+        image: {{ .Values.image.repository }}/{{ .Values.image.name }}:{{ .Values.image.tag }}
+        env:
+        - name: EVALDIR
+          value: {{ .Values.evaldir }}
+        - name: TRAINDIR
+          value: {{ .Values.traindir }}
+        - name: LD_LIBRARY_PATH 
+          value: /usr/lib/nvidia:/usr/lib/x86_64-linux-gnu
+        ports:
+        - containerPort: {{ .Values.port }}
+        volumeMounts:
+        - mountPath: /azure/{{ .Values.storage.sharename }}/
+          name: azurefile
+        - mountPath: /mnt/
+          name: ssd
+        - mountPath: /usr/local/nvidia/bin
+          name: bin
+        - mountPath: /usr/lib/nvidia
+          name: lib
+        - mountPath: /usr/lib/x86_64-linux-gnu/libcuda.so.1 
+          name: libcuda
+        resources:
+          requests:
+            alpha.kubernetes.io/nvidia-gpu: 1
+          limits:
+            alpha.kubernetes.io/nvidia-gpu: 1

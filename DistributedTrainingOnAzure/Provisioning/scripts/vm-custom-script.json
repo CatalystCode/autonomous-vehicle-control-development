@@ -1,0 +1,31 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "vmNames": {
+      "type": "array"
+    }
+  },
+  "resources": [
+    {
+      "name": "[concat(parameters('vmNames')[copyindex()],'/CustomScriptExtension')]",
+      "type": "Microsoft.Compute/virtualMachines/extensions",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2015-06-15",
+      "copy": {
+        "name": "loop",
+        "count": "[length(parameters('vmNames'))]"
+      },
+      "properties": {
+        "autoUpgradeMinorVersion": true,
+        "settings": {
+          "commandToExecute": "/bin/bash -c \"$(curl -fsSL https://gist.githubusercontent.com/xinyiou/2888c392eed57bc4f14024514088e359/raw/9907d8b95a4cd80715eaa87c960b62d38a852e5c/GPUServerSetUp)\""
+
+        },
+        "publisher": "Microsoft.Azure.Extensions",
+        "type": "CustomScript",
+        "typeHandlerVersion": "2.0"
+      }
+    }
+  ]
+}

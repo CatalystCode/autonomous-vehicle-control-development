@@ -1,0 +1,37 @@
+{
+  "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "keyVaultName": {
+      "value": "dwr-avt-dev-vault"
+    },
+    "tenantId": {
+      "value": "72f988bf-86f1-41af-91ab-2d7cd011db47"
+    },
+    "objectId": {
+      "value": "ffddb954-2bb0-41e1-96bf-0f73d1abc7a7"
+    },
+    "keysPermissions": {
+      "value": [
+        "all"
+      ]
+    },
+    "secretsPermissions": {
+      "value": [
+        "all"
+      ]
+    },
+    "skuName": {
+      "value": "Standard"
+    },
+    "enableVaultForDeployment": {
+      "value": true
+    },
+    "enableVaultForDiskEncryption": {
+      "value": false
+    },
+    "enabledForTemplateDeployment": {
+      "value": true
+    }
+  }
+}

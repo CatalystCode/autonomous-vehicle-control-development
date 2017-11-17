@@ -1,0 +1,41 @@
+FROM buildpack-deps:xenial
+
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License. See LICENSE in the project root for license information.
+
+RUN apt-get update \
+    && apt-get -y upgrade \
+    && apt-get -y install apt-transport-https build-essential curl openssl vim jq \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install azure-cli
+ENV AZURECLI_VERSION 2.0.20-1
+RUN echo "deb [arch=amd64] https://packages.microsoft.com/repos/azure-cli/ wheezy main" | \
+      tee /etc/apt/sources.list.d/azure-cli.list \
+    && apt-key adv --keyserver packages.microsoft.com --recv-keys 52E16F86FEE04B979B07E28DB02C46DF417A0893 \
+    && apt-get update \
+    && apt-get install azure-cli=${AZURECLI_VERSION}
+
+# Install kubectl
+ENV KUBECTL_VERSION 1.7.5
+RUN curl "https://storage.googleapis.com/kubernetes-release/release/v${KUBECTL_VERSION}/bin/linux/amd64/kubectl" > /usr/local/bin/kubectl \
+    && chmod +x /usr/local/bin/kubectl
+
+# Install helm
+ENV HELM_VERSION 2.6.1
+RUN mkdir -p /tmp/helm/ \
+    && curl "https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get" > /tmp/helm/get_helm.sh \
+    && chmod +x /tmp/helm/get_helm.sh \
+    && ./tmp/helm/get_helm.sh --version v${HELM_VERSION} \
+    && rm -rf /tmp/helm*
+
+# Install acs-engine
+ENV ACS_ENGINE_VERSION 0.8.0
+RUN mkdir -p /tmp/acsengine/ \
+    && curl -L "https://github.com/Azure/acs-engine/releases/download/v${ACS_ENGINE_VERSION}/acs-engine-v${ACS_ENGINE_VERSION}-linux-amd64.tar.gz" > /tmp/acsengine/acsengine.tar.gz \
+    && (cd /tmp/acsengine \
+      && tar -xvzf acsengine.tar.gz \
+      && cp acs-engine-v${ACS_ENGINE_VERSION}-linux-amd64/acs-engine /usr/local/bin/) \
+    && rm -rf /tmp/acsengine
+
+WORKDIR /src/provisioning
