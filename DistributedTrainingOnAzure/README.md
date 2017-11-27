@@ -7,4 +7,4 @@ For more detailed walk-throughs, see the README guides in each of the sub-areas:
 - [Provisioning](Provisioning/README.md)
 - [Tensorflow Model](TensorFlowModel/README.md)
 - [Helm Charts](Helm/README.md)
-- [Tensorflow to TensorRT])(TensorFlowTensorRT/README.md)
+- [Tensorflow to TensorRT](TensorFlowTensorRT/README.md)
